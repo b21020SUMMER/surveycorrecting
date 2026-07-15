@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학생 대상 표본조사 표본 편향 보정기</title>
+    <!-- 한글 타이포그래피에 어울리는 Pretendard(산세리프)와 Gmarket Sans(타이틀용) 폰트 조합 적용 -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4a90e2; /* 신뢰감을 주는 메인 하늘색 */
+            --light-bg: #f0f6fc;      /* 밝고 화사한 배경색 */
+            --accent-color: #2176ff;   /* 포인트 컬러 */
+            --card-shadow: 0 10px 30px rgba(74, 144, 226, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: var(--light-bg);
+            color: #333;
+            line-height: 1.6;
+            letter-spacing: -0.03em; /* 자간을 살짝 좁게 조절하여 현대적이고 깔끔한 느낌 부여 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+            border: 2px solid #e1edfa;
+            transition: all 0.3s ease;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #64b5f6, #1e88e5);
+            color: white;
+            padding: 30px 24px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .page {
+            padding: 24px;
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 입력란 그리드 스타일 */
+        .input-group {
+            background-color: #f8fbfe;
+            border: 1px solid #e1edfa;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .group-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #1e88e5;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .field-box {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #666;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1.5px solid #d0e3f7;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            color: #333;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--primary-color);
+            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+        }
+
+        /* 버튼 스타일 */
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4ad2e2, #1e88e5);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(30, 136, 229, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* 결과 페이지 관련 슬라이더 스타일 */
+        .slider-box {
+            margin-bottom: 20px;
+            background: #f8fbfe;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1.5px solid #e1edfa;
+        }
+
+        .slider-label-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .slider-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        .slider-value {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1e88e5;
+            background: #e3f2fd;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #dcdcdc;
+            outline: none;
+            transition: background 450ms ease-in;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1e88e5;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* 최종 수정된 비율 카드 */
+        .result-card {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            border-radius: 18px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            border: 1.5px solid #90caf9;
+        }
+
+        .result-card span {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #1565c0;
+            margin-bottom: 6px;
+        }
+
+        .result-rate {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0d47a1;
+        }
+
+        .copy-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .btn-outline {
+            background: white;
+            color: #1e88e5;
+            border: 2px solid #1e88e5;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex: 1;
+            transition: all 0.2s;
+        }
+
+        .btn-outline:hover {
+            background: #e3f2fd;
+        }
+
+        /* 분석/가중치 고려사항 안내문 */
+        .info-box {
+            background-color: #f1f8e9;
+            border-left: 4px solid #7cb342;
+            padding: 12px 16px;
+            border-radius: 4px 12px 12px 4px;
+            font-size: 0.85rem;
+            color: #33691e;
+            margin-bottom: 20px;
+        }
+
+        .info-box h4 {
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .info-box ul {
+            padding-left: 18px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <h1>📊 학생 대상 표본조사 표본 편향 보정기</h1>
+        <p>대한민국 실제 학생 인구 구조를 반영하여 조사 결과를 현실화합니다.</p>
+    </div>
+
+    <!-- 1페이지: 데이터 입력 화면 -->
+    <div id="page1" class="page active">
+        <!-- 1. 20대 대학생 집단 -->
+        <div class="input-group">
+            <div class="group-title">🎓 1. 20대 대학생 집단</div>
+            <div class="grid-2">
+                <div class="field-box">
+                    <label>표본 내 총 학생 수</label>
+                    <input type="number" id="n20" placeholder="예: 10" value="10" min="0">
+                </div>
+                <div class="field-box">
+                    <label>특정 요소 선택자 수</label>
+                    <input type="number" id="x20" placeholder="예: 3" value="3" min="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 10대 여성 학생 집단 -->
+        <div class="input-group">
+            <div class="group-title">👩‍🎓 2. 10대 여성 학생 집단</div>
+            <div class="grid-2">
+                <div class="field-box">
+                    <label>표본 내 총 학생 수</label>
+                    <input type="number" id="n10f" placeholder="예: 50" value="50" min="0">
+                </div>
+                <div class="field-box">
+                    <label>특정 요소 선택자 수</label>
+                    <input type="number" id="x10f" placeholder="예: 25" value="25" min="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 10대 남성 학생 집단 -->
+        <div class="input-group">
+            <div class="group-title">👨‍🎓 3. 10대 남성 학생 집단</div>
+            <div class="grid-2">
+                <div class="field-box">
+                    <label>표본 내 총 학생 수</label>
+                    <input type="number" id="n10m" placeholder="예: 30" value="30" min="0">
+                </div>
+                <div class="field-box">
+                    <label>특정 요소 선택자 수</label>
+                    <input type="number" id="x10m" placeholder="예: 10" value="10" min="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 전체 표본 집단 -->
+        <div class="input-group">
+            <div class="group-title">📋 4. 전체 표본 집단</div>
+            <div class="grid-2">
+                <div class="field-box">
+                    <label>전체 표본 인원수 (N)</label>
+                    <input type="number" id="ntotal" placeholder="예: 100" value="100" min="1">
+                </div>
+                <div class="field-box">
+                    <label>전체 중 특정 요소 선택수</label>
+                    <input type="number" id="xtotal" placeholder="예: 42" value="42" min="0">
+                </div>
+            </div>
+        </div>
+
+        <button class="btn" onclick="calculateCorrection()">🔍 가중치 적용 결과 계산하기</button>
+    </div>
+
+    <!-- 2페이지: 실시간 슬라이더 조정 및 결과 화면 -->
+    <div id="page2" class="page">
+        <!-- 수정된 최종 결과 비율 -->
+        <div class="result-card">
+            <span>대한민국 전체 학생 대비 보정된 비율</span>
+            <div class="result-rate" id="correctedRate">0.0%</div>
+            
+            <div class="copy-area">
+                <button class="btn-outline" onclick="copyResult()">📋 결과 복사하기</button>
+                <button class="btn-outline" style="border-color:#aaa; color:#666;" onclick="goBack()">↩️ 수정하러 가기</button>
+            </div>
+        </div>
+
+        <!-- 가중치 고려 요소에 관한 상세한 설명 -->
+        <div class="info-box">
+            <h4>💡 수치 및 가중치 고려 방식</h4>
+            <p>보정 연산은 실제 대한민국 인구 구조 가중치(통계청 학령인구 표준 데이터 기반)를 적용합니다.</p>
+            <ul style="margin-top: 5px;">
+                <li><strong>10대 남성 학생 가중치:</strong> 약 36.8%</li>
+                <li><strong>10대 여성 학생 가중치:</strong> 약 34.3%</li>
+                <li><strong>20대 대학생 가중치:</strong> 약 28.9%</li>
+            </ul>
+            <p style="margin-top: 5px; font-size: 0.8rem;">* 입력하신 각 그룹의 "선택 비율"을 추출하여 실제 전체 학생 인구 비율에 맞춰 가중평균(Weighted Average)을 연산합니다. 입력값 이외의 기타 연령층 표본은 전체 인구 통계 비율에 맞춰 보간 처리되었습니다.</p>
+        </div>
+
+        <!-- 실시간 조절 가능한 인터랙티브 슬라이더들 -->
+        <h3 style="font-size:1rem; margin-bottom:12px; font-weight:700;">🎛️ 실시간 입력값 조절 장치 (슬라이더)</h3>
+        
+        <div class="slider-box">
+            <div class="slider-label-area">
+                <span class="slider-name">1. 20대 대학생 선택자 수</span>
+                <span class="slider-value" id="val20">3명</span>
+            </div>
+            <input type="range" id="slide20" min="0" max="10" value="3" oninput="onSlideChange()">
+        </div>
+
+        <div class="slider-box">
+            <div class="slider-label-area">
+                <span class="slider-name">2. 10대 여성 선택자 수</span>
+                <span class="slider-value" id="val10f">25명</span>
+            </div>
+            <input type="range" id="slide10f" min="0" max="50" value="25" oninput="onSlideChange()">
+        </div>
+
+        <div class="slider-box">
+            <div class="slider-label-area">
+                <span class="slider-name">3. 10대 남성 선택자 수</span>
+                <span class="slider-value" id="val10m">10명</span>
+            </div>
+            <input type="range" id="slide10m" min="0" max="30" value="10" oninput="onSlideChange()">
+        </div>
+
+        <div class="slider-box">
+            <div class="slider-label-area">
+                <span class="slider-name">4. 전체 표본 선택자 수</span>
+                <span class="slider-value" id="valtotal">42명</span>
+            </div>
+            <input type="range" id="slidetotal" min="0" max="100" value="42" oninput="onSlideChange()">
+        </div>
+    </div>
+</div>
+
+<script>
+    // 전역 상태 관리 변수
+    let data = {
+        n20: 10, x20: 3,
+        n10f: 50, x10f: 25,
+        n10m: 30, x10m: 10,
+        ntotal: 100, xtotal: 42
+    };
+
+    // 통계청 및 교육기관 표준 학령인구 비율을 이용한 보정 가중치
+    // 초/중/고 학생(10대)과 전문대/대학교 대학생(20대 초반) 비율 반영
+    const WEIGHTS = {
+        genderMale10: 0.368,   // 10대 남학생 비율
+        genderFemale10: 0.343, // 10대 여학생 비율
+        student20s: 0.289      // 20대 학생 비율
+    };
+
+    // 1페이지에서 계산 버튼 클릭 시 작동
+    function calculateCorrection() {
+        // 입력값 가져오기
+        data.n20 = Math.max(0, parseInt(document.getElementById('n20').value) || 0);
+        data.x20 = Math.max(0, parseInt(document.getElementById('x20').value) || 0);
+        data.n10f = Math.max(0, parseInt(document.getElementById('n10f').value) || 0);
+        data.x10f = Math.max(0, parseInt(document.getElementById('x10f').value) || 0);
+        data.n10m = Math.max(0, parseInt(document.getElementById('n10m').value) || 0);
+        data.x10m = Math.max(0, parseInt(document.getElementById('x10m').value) || 0);
+        data.ntotal = Math.max(1, parseInt(document.getElementById('ntotal').value) || 1);
+        data.xtotal = Math.max(0, parseInt(document.getElementById('xtotal').value) || 0);
+
+        // 정합성 검사 (선택한 사람이 표본 크기보다 클 수 없음)
+        if (data.x20 > data.n20) data.x20 = data.n20;
+        if (data.x10f > data.n10f) data.x10f = data.n10f;
+        if (data.x10m > data.n10m) data.x10m = data.n10m;
+        if (data.xtotal > data.ntotal) data.xtotal = data.ntotal;
+
+        // 슬라이더의 최댓값을 입력받은 분모(N) 값으로 세팅
+        initSliders();
+
+        // 페이지 전환
+        document.getElementById('page1').classList.remove('active');
+        document.getElementById('page2').classList.add('active');
+
+        // 보정 비율 연산 수행
+        updateResult();
+    }
+
+    // 슬라이더 최댓값 및 현재 위치 동기화
+    function initSliders() {
+        setupSlider('slide20', 'val20', data.x20, data.n20);
+        setupSlider('slide10f', 'val10f', data.x10f, data.n10f);
+        setupSlider('slide10m', 'val10m', data.x10m, data.n10m);
+        setupSlider('slidetotal', 'valtotal', data.xtotal, data.ntotal);
+    }
+
+    function setupSlider(sliderId, valueId, curVal, maxVal) {
+        const slider = document.getElementById(sliderId);
+        slider.max = maxVal;
+        slider.value = curVal;
+        document.getElementById(valueId).innerText = curVal + "명";
+    }
+
+    // 슬라이더 조절 시 연쇄 호출
+    function onSlideChange() {
+        data.x20 = parseInt(document.getElementById('slide20').value);
+        data.x10f = parseInt(document.getElementById('slide10f').value);
+        data.x10m = parseInt(document.getElementById('slide10m').value);
+        data.xtotal = parseInt(document.getElementById('slidetotal').value);
+
+        document.getElementById('val20').innerText = data.x20 + "명";
+        document.getElementById('val10f').innerText = data.x10f + "명";
+        document.getElementById('val10m').innerText = data.x10m + "명";
+        document.getElementById('valtotal').innerText = data.xtotal + "명";
+
+        updateResult();
+    }
+
+    // 핵심 보정 알고리즘
+    function updateResult() {
+        // 각 서브그룹의 선택 비율 계산 (분모가 0일 경우 예외처리)
+        const p20 = data.n20 > 0 ? (data.x20 / data.n20) : 0;
+        const p10f = data.n10f > 0 ? (data.x10f / data.n10f) : 0;
+        const p10m = data.n10m > 0 ? (data.x10m / data.n10m) : 0;
+        
+        // 전체 입력 비율
+        const pTotal = data.ntotal > 0 ? (data.xtotal / data.ntotal) : 0;
+
+        // 대한민국 실제 청소년/청년 학생 인구 비율 분포 가중치 적용
+        // 가중 평균식: (각 그룹의 실제 인구 가중치 * 표본 내 그룹 비율)의 합
+        let correctedRate = 0;
+
+        // 세 가지 타겟 그룹의 가중치 합
+        const targetWeightSum = WEIGHTS.student20s + WEIGHTS.genderFemale10 + WEIGHTS.genderMale10;
+
+        if (data.n20 > 0 || data.n10f > 0 || data.n10m > 0) {
+            // 표본에 타겟 그룹 데이터가 있다면 인구수 분포 비중대로 조절
+            correctedRate = (p20 * WEIGHTS.student20s) + 
+                            (p10f * WEIGHTS.genderFemale10) + 
+                            (p10m * WEIGHTS.genderMale10);
+            
+            // 만약 세 그룹 외의 기타 그룹이 전체 표본에서 일부 비중을 차지하고 있었다면 이를 보정
+            const matchedSampleCount = data.n20 + data.n10f + data.n10m;
+            if (data.ntotal > matchedSampleCount) {
+                const remainingSampleCount = data.ntotal - matchedSampleCount;
+                const remainingWeight = Math.max(0, 1 - targetWeightSum);
+                const pRemaining = pTotal; // 기타 그룹 비율은 기본 전체 응답률로 대체 적용
+                correctedRate += (pRemaining * remainingWeight);
+            } else {
+                // 타겟 그룹만으로 구성되었다면 가중치 정규화(100% 비율에 맞춤)
+                correctedRate = correctedRate / targetWeightSum;
+            }
+        } else {
+            // 서브그룹 데이터가 아예 기입되지 않은 경우 전체 비율을 그대로 출력
+            correctedRate = pTotal;
+        }
+
+        // 퍼센트 변환 및 소수점 첫째 자리 반올림
+        const finalPercent = (correctedRate * 100).toFixed(1);
+        document.getElementById('correctedRate').innerText = finalPercent + "%";
+    }
+
+    // 클립보드 복사 기능
+    function copyResult() {
+        const rateText = document.getElementById('correctedRate').innerText;
+        navigator.clipboard.writeText(rateText).then(() => {
+            alert("보정된 결과 값(" + rateText + ")이 클립보드에 복사되었습니다! 🎉");
+        }).catch(err => {
+            alert("복사에 실패했습니다. 수동으로 복사해주세요.");
+        });
+    }
+
+    // 이전 페이지로 돌아가기
+    function goBack() {
+        document.getElementById('page2').classList.remove('active');
+        document.getElementById('page1').classList.add('active');
+    }
+</script>
+
+</body>
+</html>
